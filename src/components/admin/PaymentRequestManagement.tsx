@@ -233,18 +233,44 @@ const PaymentRequestManagement = () => {
                   <TableCell>
                     {new Date(request.created_at).toLocaleDateString()}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setSelectedRequest(request)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
+                   <TableCell>
+                     <div className="flex gap-2">
+                       {/* Quick actions for pending requests */}
+                       {request.status === 'pending' && (
+                         <>
+                           <Button
+                             size="sm"
+                             onClick={() => updateRequestStatus(request.id, 'approved')}
+                             className="h-8 px-2"
+                           >
+                             <CheckCircle className="h-3 w-3" />
+                           </Button>
+                           <Button
+                             size="sm"
+                             variant="destructive"
+                             onClick={() => updateRequestStatus(request.id, 'rejected')}
+                             className="h-8 px-2"
+                           >
+                             <XCircle className="h-3 w-3" />
+                           </Button>
+                         </>
+                       )}
+                       
+                       {/* View details button */}
+                       <Dialog>
+                         <DialogTrigger asChild>
+                           <Button
+                             size="sm"
+                             variant="outline"
+                             onClick={() => {
+                               setSelectedRequest(request);
+                               setAdminNotes(request.admin_notes || '');
+                             }}
+                             className="h-8 px-2"
+                           >
+                             <Eye className="h-3 w-3" />
+                           </Button>
+                         </DialogTrigger>
                         <DialogContent className="max-w-2xl">
                           <DialogHeader>
                             <DialogTitle>Payment Request Details</DialogTitle>
