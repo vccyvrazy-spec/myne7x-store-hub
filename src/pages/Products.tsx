@@ -116,18 +116,27 @@ const Products = () => {
       // Admin can download immediately without countdown
       try {
         if (product.file_url) {
-          const link = document.createElement('a');
-          link.href = product.file_url;
-          link.download = product.title;
-          link.target = '_blank';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          // Get direct download URL from Supabase storage
+          const { data } = await supabase.storage
+            .from('product-files')
+            .createSignedUrl(product.file_url.split('/').pop() || '', 3600);
           
-          toast({
-            title: "Download Started",
-            description: `${product.title} download has begun`,
-          });
+          if (data?.signedUrl) {
+            const link = document.createElement('a');
+            link.href = data.signedUrl;
+            link.download = product.title;
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            toast({
+              title: "Download Started",
+              description: `${product.title} download has begun`,
+            });
+          } else {
+            throw new Error('Unable to create download link');
+          }
         } else {
           throw new Error('No file URL found');
         }
@@ -150,7 +159,7 @@ const Products = () => {
       return;
     }
 
-    // Start countdown for regular users
+    // Start download component
     setDownloadingProduct(product);
   };
 

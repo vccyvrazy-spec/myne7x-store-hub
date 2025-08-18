@@ -10,48 +10,66 @@ interface DownloadComponentProps {
   product: {
     id: string;
     title: string;
+    price: number;
     file_url?: string;
   };
   onClose: () => void;
 }
 
 const DownloadComponent = ({ product, onClose }: DownloadComponentProps) => {
-  const [countdown, setCountdown] = useState(30);
+  const isFree = product.price === 0;
+  const [countdown, setCountdown] = useState(isFree ? 0 : 10);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadComplete, setDownloadComplete] = useState(false);
 
   useEffect(() => {
+    if (isFree) {
+      // Start download immediately for free products
+      startDownload();
+      return;
+    }
+    
     if (countdown > 0 && !downloadComplete) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
     } else if (countdown === 0 && !downloadComplete) {
       startDownload();
     }
-  }, [countdown, downloadComplete]);
+  }, [countdown, downloadComplete, isFree]);
 
   const startDownload = async () => {
     setIsDownloading(true);
     
     try {
       if (product.file_url) {
-        // Create a temporary link to download the file
-        const link = document.createElement('a');
-        link.href = product.file_url;
-        link.download = `${product.title}`;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Get direct download URL from Supabase storage
+        const { data } = await supabase.storage
+          .from('product-files')
+          .createSignedUrl(product.file_url.split('/').pop() || '', 3600);
         
-        setDownloadComplete(true);
-        toast({
-          title: "Download Started",
-          description: `${product.title} download has begun`,
-        });
+        if (data?.signedUrl) {
+          // Create a temporary link to download the file
+          const link = document.createElement('a');
+          link.href = data.signedUrl;
+          link.download = `${product.title}`;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          setDownloadComplete(true);
+          toast({
+            title: "Download Started",
+            description: `${product.title} download has begun`,
+          });
+        } else {
+          throw new Error('Unable to create download link');
+        }
       } else {
         throw new Error('No file URL found');
       }
     } catch (error) {
+      console.error('Download error:', error);
       toast({
         title: "Download Failed",
         description: "Unable to download the file. Please contact support.",
@@ -62,7 +80,7 @@ const DownloadComponent = ({ product, onClose }: DownloadComponentProps) => {
     }
   };
 
-  const progressValue = ((30 - countdown) / 30) * 100;
+  const progressValue = isFree ? 100 : ((10 - countdown) / 10) * 100;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -73,33 +91,37 @@ const DownloadComponent = ({ product, onClose }: DownloadComponentProps) => {
             Download {product.title}
           </CardTitle>
           <CardDescription>
-            {downloadComplete ? 'Download completed!' : 'Preparing your download...'}
+            {downloadComplete ? 'Download completed!' : isFree ? 'Starting your free download...' : 'Preparing your download...'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {!downloadComplete && (
             <>
-              <div className="text-center">
-                <div className="text-6xl font-bold text-neon-cyan mb-2">
-                  {countdown}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {countdown > 0 ? 'seconds remaining' : 'Starting download...'}
-                </p>
-              </div>
+              {!isFree && (
+                <>
+                  <div className="text-center">
+                    <div className="text-6xl font-bold text-neon-cyan mb-2">
+                      {countdown}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {countdown > 0 ? 'seconds remaining' : 'Starting download...'}
+                    </p>
+                  </div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Progress</span>
-                  <span>{Math.round(progressValue)}%</span>
-                </div>
-                <Progress value={progressValue} className="h-2" />
-              </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Progress</span>
+                      <span>{Math.round(progressValue)}%</span>
+                    </div>
+                    <Progress value={progressValue} className="h-2" />
+                  </div>
+                </>
+              )}
 
-              {isDownloading && (
+              {(isDownloading || isFree) && (
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                   <Clock className="h-4 w-4 animate-spin" />
-                  Initiating download...
+                  {isFree ? 'Starting your free download...' : 'Initiating download...'}
                 </div>
               )}
             </>
