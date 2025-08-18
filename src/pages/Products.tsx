@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +35,7 @@ interface PaymentRequest {
 
 const Products = () => {
   const { user, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [userAccess, setUserAccess] = useState<UserAccess[]>([]);
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
@@ -126,7 +128,7 @@ const Products = () => {
 
   const getButtonState = (product: Product) => {
     if (!user) {
-      return { text: 'Sign in to Purchase', variant: 'outline' as const, action: () => window.location.href = '/auth' };
+      return { text: 'Sign in to Purchase', variant: 'outline' as const, action: () => navigate('/auth') };
     }
 
     // For free products, show Download button directly
@@ -158,13 +160,13 @@ const Products = () => {
     }
     
     if (paymentStatus === 'rejected') {
-      return { text: 'Request Rejected - Try Again', variant: 'destructive' as const, action: () => window.location.href = `/request-payment/${product.id}` };
+      return { text: 'Request Rejected - Try Again', variant: 'destructive' as const, action: () => navigate(`/request-payment/${product.id}`) };
     }
 
     return { 
       text: `Buy - $${product.price}`, 
       variant: 'default' as const,
-      action: () => window.location.href = `/request-payment/${product.id}`,
+      action: () => navigate(`/request-payment/${product.id}`),
       className: 'btn-neon'
     };
   };
@@ -234,7 +236,7 @@ const Products = () => {
                 {product.image_url && (
                   <div 
                     className="h-40 md:h-48 overflow-hidden cursor-pointer"
-                    onClick={() => window.location.href = `/product/${product.id}`}
+                    onClick={() => navigate(`/product/${product.id}`)}
                   >
                     <img
                       src={product.image_url}
@@ -247,7 +249,7 @@ const Products = () => {
                   <div className="flex justify-between items-start gap-2">
                     <CardTitle 
                       className="text-sm md:text-lg cursor-pointer hover:text-primary transition-colors line-clamp-1 font-orbitron"
-                      onClick={() => window.location.href = `/product/${product.id}`}
+                      onClick={() => navigate(`/product/${product.id}`)}
                     >
                       {product.title}
                     </CardTitle>
