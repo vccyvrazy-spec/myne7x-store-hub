@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { Search, Package, DollarSign, Download } from 'lucide-react';
+import DownloadComponent from '@/components/DownloadComponent';
 
 interface Product {
   id: string;
@@ -17,23 +18,33 @@ interface Product {
   category: string;
   tags: string[];
   is_active: boolean;
+  file_url?: string;
 }
 
 interface UserAccess {
   product_id: string;
 }
 
+interface PaymentRequest {
+  id: string;
+  product_id: string;
+  status: string;
+}
+
 const Products = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [userAccess, setUserAccess] = useState<UserAccess[]>([]);
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [downloadingProduct, setDownloadingProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     fetchProducts();
     if (user) {
       fetchUserAccess();
+      fetchPaymentRequests();
     }
   }, [user]);
 
@@ -74,11 +85,61 @@ const Products = () => {
     }
   };
 
+  const fetchPaymentRequests = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('payment_requests')
+        .select('id, product_id, status')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setPaymentRequests(data || []);
+    } catch (error) {
+      console.error('Error fetching payment requests:', error);
+    }
+  };
+
   const hasAccess = (productId: string) => {
     return userAccess.some(access => access.product_id === productId);
   };
 
+  const getPaymentStatus = (productId: string) => {
+    const request = paymentRequests.find(req => req.product_id === productId);
+    return request?.status || null;
+  };
+
   const handleDownload = async (product: Product) => {
+    if (isAdmin) {
+      // Admin can download immediately without countdown
+      try {
+        if (product.file_url) {
+          const link = document.createElement('a');
+          link.href = product.file_url;
+          link.download = product.title;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          toast({
+            title: "Download Started",
+            description: `${product.title} download has begun`,
+          });
+        } else {
+          throw new Error('No file URL found');
+        }
+      } catch (error) {
+        toast({
+          title: "Download Failed",
+          description: "Unable to download the file",
+          variant: "destructive"
+        });
+      }
+      return;
+    }
+
     if (!hasAccess(product.id)) {
       toast({
         title: "Access Denied",
@@ -88,11 +149,40 @@ const Products = () => {
       return;
     }
 
-    // Here you would implement the actual download logic
-    toast({
-      title: "Download Started",
-      description: `Downloading ${product.title}...`
-    });
+    // Start countdown for regular users
+    setDownloadingProduct(product);
+  };
+
+  const getButtonState = (product: Product) => {
+    if (!user) {
+      return { text: 'Sign in to Purchase', variant: 'outline' as const, action: () => window.location.href = '/auth' };
+    }
+
+    if (hasAccess(product.id)) {
+      return { 
+        text: 'Download', 
+        variant: 'default' as const, 
+        action: () => handleDownload(product),
+        icon: Download
+      };
+    }
+
+    const paymentStatus = getPaymentStatus(product.id);
+    
+    if (paymentStatus === 'pending') {
+      return { text: 'Request Pending', variant: 'secondary' as const, disabled: true };
+    }
+    
+    if (paymentStatus === 'rejected') {
+      return { text: 'Request Rejected - Try Again', variant: 'destructive' as const, action: () => window.location.href = `/request-payment/${product.id}` };
+    }
+
+    return { 
+      text: product.price === 0 ? 'Get Free Access' : `Request Access - $${product.price}`, 
+      variant: 'default' as const,
+      action: () => window.location.href = `/request-payment/${product.id}`,
+      className: 'btn-neon'
+    };
   };
 
   const filteredProducts = products.filter(product =>
@@ -140,96 +230,93 @@ const Products = () => {
             />
           </div>
         </div>
-      </div>
 
         <div className="container mx-auto px-4">
           {filteredProducts.length === 0 ? (
-          <Card className="text-center py-12 card-neon max-w-md mx-auto">
-            <CardContent>
-              <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No products found</h3>
-              <p className="text-muted-foreground">
-                {searchTerm ? 'Try adjusting your search terms' : 'No products are currently available'}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <Card key={product.id} className="overflow-hidden card-neon hover-scale">
-              {product.image_url && (
-                <div className="h-48 overflow-hidden">
-                  <img
-                    src={product.image_url}
-                    alt={product.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg">{product.title}</CardTitle>
-                  <Badge variant={product.price === 0 ? "default" : "secondary"} className="ml-2">
-                    {product.price === 0 ? (
-                      <>FREE</>
-                    ) : (
-                      <>
-                        <DollarSign className="h-3 w-3 mr-1" />
-                        {product.price}
-                      </>
-                    )}
-                  </Badge>
-                </div>
-                <CardDescription className="line-clamp-2">
-                  {product.description}
-                </CardDescription>
-              </CardHeader>
+            <Card className="text-center py-12 card-neon max-w-md mx-auto">
               <CardContent>
-                <div className="flex flex-wrap gap-1 mb-4">
-                  {product.category && (
-                    <Badge variant="outline">{product.category}</Badge>
-                  )}
-                  {product.tags?.slice(0, 2).map((tag, index) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-                
-                {user ? (
-                  hasAccess(product.id) ? (
-                    <Button 
-                      onClick={() => handleDownload(product)}
-                      className="w-full"
-                      variant="default"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button>
-                  ) : (
-                    <Button 
-                      onClick={() => window.location.href = `/request-payment/${product.id}`}
-                      className="w-full btn-neon"
-                    >
-                      {product.price === 0 ? 'Get Free Access' : `Request Access - $${product.price}`}
-                    </Button>
-                  )
-                ) : (
-                  <Button 
-                    onClick={() => window.location.href = '/auth'}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    Sign in to Purchase
-                  </Button>
-                )}
+                <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No products found</h3>
+                <p className="text-muted-foreground">
+                  {searchTerm ? 'Try adjusting your search terms' : 'No products are currently available'}
+                </p>
               </CardContent>
             </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredProducts.map((product) => (
+                <Card key={product.id} className="overflow-hidden card-neon hover-scale">
+                  {product.image_url && (
+                    <div className="h-48 overflow-hidden">
+                      <img
+                        src={product.image_url}
+                        alt={product.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-lg">{product.title}</CardTitle>
+                      <Badge variant={product.price === 0 ? "default" : "secondary"} className="ml-2">
+                        {product.price === 0 ? (
+                          <>FREE</>
+                        ) : (
+                          <>
+                            <DollarSign className="h-3 w-3 mr-1" />
+                            {product.price}
+                          </>
+                        )}
+                      </Badge>
+                    </div>
+                    <CardDescription className="line-clamp-2">
+                      {product.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-1 mb-4">
+                      {product.category && (
+                        <Badge variant="outline">{product.category}</Badge>
+                      )}
+                      {product.tags?.slice(0, 2).map((tag, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    
+                    {(() => {
+                      const buttonState = getButtonState(product);
+                      const Icon = buttonState.icon;
+                      
+                      return (
+                        <Button 
+                          onClick={buttonState.action}
+                          className={`w-full ${buttonState.className || ''}`}
+                          variant={buttonState.variant}
+                          disabled={buttonState.disabled}
+                        >
+                          {Icon && <Icon className="h-4 w-4 mr-2" />}
+                          {buttonState.text}
+                        </Button>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
               ))}
             </div>
           )}
         </div>
+
+        {/* Download Component */}
+        {downloadingProduct && (
+          <DownloadComponent 
+            product={downloadingProduct}
+            onClose={() => setDownloadingProduct(null)}
+          />
+        )}
       </div>
+    </div>
   );
 };
 

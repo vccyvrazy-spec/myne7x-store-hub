@@ -36,6 +36,21 @@ const PaymentRequestManagement = () => {
 
   useEffect(() => {
     fetchPaymentRequests();
+    
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('payment_requests_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'payment_requests' },
+        () => {
+          fetchPaymentRequests();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchPaymentRequests = async () => {
@@ -209,7 +224,11 @@ const PaymentRequestManagement = () => {
                     </div>
                   </TableCell>
                   <TableCell>{request.product_title}</TableCell>
-                  <TableCell>{request.payment_method}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {request.payment_method === 'nayapay' ? 'Nayapay' : 'Custom'}
+                    </Badge>
+                  </TableCell>
                   <TableCell>{getStatusBadge(request.status)}</TableCell>
                   <TableCell>
                     {new Date(request.created_at).toLocaleDateString()}
@@ -242,9 +261,12 @@ const PaymentRequestManagement = () => {
                                 <div>
                                   <strong>Product:</strong> {selectedRequest.product_title}
                                 </div>
-                                <div>
-                                  <strong>Payment Method:</strong> {selectedRequest.payment_method}
-                                </div>
+                                 <div>
+                                   <strong>Payment Method:</strong> 
+                                   <Badge variant="outline" className="ml-2">
+                                     {selectedRequest.payment_method === 'nayapay' ? 'Nayapay' : 'Custom'}
+                                   </Badge>
+                                 </div>
                                 <div>
                                   <strong>Transaction ID:</strong> {selectedRequest.transaction_id || 'N/A'}
                                 </div>

@@ -5,12 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { CreditCard, Upload, DollarSign, ArrowLeft, Package } from 'lucide-react';
+import { CreditCard, Upload, DollarSign, ArrowLeft, Package, Copy } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -28,12 +27,12 @@ const RequestPayment = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
+  const [paymentType, setPaymentType] = useState<'nayapay' | 'custom' | ''>('');
   const [formData, setFormData] = useState({
-    paymentMethod: '',
-    contactMethod: 'whatsapp',
-    contactValue: '',
+    socialContact: '',
+    socialType: 'whatsapp',
     transactionId: '',
-    alternativeDetails: ''
+    customMessage: ''
   });
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
 
@@ -90,10 +89,19 @@ const RequestPayment = () => {
     e.preventDefault();
     if (!user || !product) return;
 
-    if (!formData.paymentMethod || !formData.contactValue) {
+    if (!paymentType || !formData.socialContact) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (paymentType === 'nayapay' && !formData.transactionId && !screenshotFile) {
+      toast({
+        title: "Error",
+        description: "Please provide either transaction ID or payment screenshot",
         variant: "destructive"
       });
       return;
@@ -112,12 +120,12 @@ const RequestPayment = () => {
         .insert({
           user_id: user.id,
           product_id: product.id,
-          payment_method: formData.paymentMethod,
-          contact_method: formData.contactMethod,
-          contact_value: formData.contactValue,
+          payment_method: paymentType,
+          contact_method: formData.socialType,
+          contact_value: formData.socialContact,
           transaction_id: formData.transactionId || null,
           payment_screenshot_url: screenshotUrl || null,
-          alternative_payment_details: formData.alternativeDetails || null,
+          alternative_payment_details: formData.customMessage || null,
           status: 'pending'
         });
 
@@ -212,8 +220,14 @@ const RequestPayment = () => {
                   <p className="text-muted-foreground mt-2">{product.description}</p>
                 </div>
                 <div className="flex items-center gap-2 text-2xl font-bold text-neon-cyan">
-                  <DollarSign className="h-6 w-6" />
-                  {product.price}
+                  {product.price === 0 ? (
+                    <span className="text-green-500">FREE</span>
+                  ) : (
+                    <>
+                      <DollarSign className="h-6 w-6" />
+                      {product.price}
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -231,114 +245,136 @@ const RequestPayment = () => {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Payment Method */}
+                  {/* Payment Type Selection */}
                   <div className="space-y-3">
                     <Label className="text-sm font-medium">Payment Method *</Label>
                     <RadioGroup
-                      value={formData.paymentMethod}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, paymentMethod: value }))}
+                      value={paymentType}
+                      onValueChange={(value) => setPaymentType(value as 'nayapay' | 'custom')}
                     >
                       <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="bank-transfer" id="bank" />
-                        <Label htmlFor="bank">Bank Transfer</Label>
+                        <RadioGroupItem value="nayapay" id="nayapay" />
+                        <Label htmlFor="nayapay">Nayapay</Label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="mobile-money" id="mobile" />
-                        <Label htmlFor="mobile">Mobile Money</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="crypto" id="crypto" />
-                        <Label htmlFor="crypto">Cryptocurrency</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="other" id="other" />
-                        <Label htmlFor="other">Other</Label>
+                        <RadioGroupItem value="custom" id="custom" />
+                        <Label htmlFor="custom">Custom Form</Label>
                       </div>
                     </RadioGroup>
                   </div>
 
-                  {/* Contact Method */}
-                  <div className="space-y-2">
-                    <Label htmlFor="contact-method">Contact Method *</Label>
-                    <Select
-                      value={formData.contactMethod}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, contactMethod: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                        <SelectItem value="telegram">Telegram</SelectItem>
-                        <SelectItem value="email">Email</SelectItem>
-                        <SelectItem value="phone">Phone</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Nayapay Details */}
+                  {paymentType === 'nayapay' && (
+                    <Card className="bg-muted/50 border-neon-cyan/20">
+                      <CardHeader>
+                        <CardTitle className="text-sm text-neon-cyan">Nayapay Payment Details</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="p-4 bg-background rounded-lg border">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Nayapay Number:</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-lg">+923184712251</span>
+                              <Button 
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  navigator.clipboard.writeText('+923184712251');
+                                  toast({ title: "Copied!", description: "Phone number copied to clipboard" });
+                                }}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="transaction-id">Transaction ID</Label>
+                          <Input
+                            id="transaction-id"
+                            value={formData.transactionId}
+                            onChange={(e) => setFormData(prev => ({ ...prev, transactionId: e.target.value }))}
+                            placeholder="Enter transaction ID"
+                          />
+                        </div>
 
-                  {/* Contact Value */}
-                  <div className="space-y-2">
-                    <Label htmlFor="contact-value">
-                      {formData.contactMethod === 'email' ? 'Email Address' : 
-                       formData.contactMethod === 'phone' ? 'Phone Number' :
-                       formData.contactMethod === 'whatsapp' ? 'WhatsApp Number' :
-                       'Telegram Username'} *
-                    </Label>
-                    <Input
-                      id="contact-value"
-                      type={formData.contactMethod === 'email' ? 'email' : 'text'}
-                      value={formData.contactValue}
-                      onChange={(e) => setFormData(prev => ({ ...prev, contactValue: e.target.value }))}
-                      placeholder={
-                        formData.contactMethod === 'email' ? 'your@email.com' :
-                        formData.contactMethod === 'whatsapp' ? '+1234567890' :
-                        formData.contactMethod === 'telegram' ? '@username' :
-                        '+1234567890'
-                      }
-                      required
-                    />
-                  </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="screenshot">OR Upload Payment Screenshot</Label>
+                          <Input
+                            id="screenshot"
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setScreenshotFile(e.target.files?.[0] || null)}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
-                  {/* Transaction ID */}
-                  <div className="space-y-2">
-                    <Label htmlFor="transaction-id">Transaction ID (Optional)</Label>
-                    <Input
-                      id="transaction-id"
-                      value={formData.transactionId}
-                      onChange={(e) => setFormData(prev => ({ ...prev, transactionId: e.target.value }))}
-                      placeholder="Enter transaction reference"
-                    />
-                  </div>
+                  {/* Custom Form Details */}
+                  {paymentType === 'custom' && (
+                    <Card className="bg-muted/50 border-orange-500/20">
+                      <CardHeader>
+                        <CardTitle className="text-sm text-orange-500">Custom Payment Method</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="custom-message">Explain Your Payment Method *</Label>
+                          <Textarea
+                            id="custom-message"
+                            value={formData.customMessage}
+                            onChange={(e) => setFormData(prev => ({ ...prev, customMessage: e.target.value }))}
+                            placeholder="Describe how you want to pay (e.g., Bank transfer, Cash, etc.)"
+                            rows={3}
+                            required
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
-                  {/* Payment Screenshot */}
-                  <div className="space-y-2">
-                    <Label htmlFor="screenshot">Payment Screenshot (Optional)</Label>
-                    <Input
-                      id="screenshot"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setScreenshotFile(e.target.files?.[0] || null)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Upload a screenshot of your payment confirmation
-                    </p>
-                  </div>
+                  {/* Social Contact (Required for both) */}
+                  {paymentType && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Social Contact Method *</Label>
+                        <RadioGroup
+                          value={formData.socialType}
+                          onValueChange={(value) => setFormData(prev => ({ ...prev, socialType: value }))}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="whatsapp" id="whatsapp" />
+                            <Label htmlFor="whatsapp">WhatsApp Number</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="telegram" id="telegram" />
+                            <Label htmlFor="telegram">Telegram ID</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
 
-                  {/* Alternative Details */}
-                  <div className="space-y-2">
-                    <Label htmlFor="alternative-details">Additional Details (Optional)</Label>
-                    <Textarea
-                      id="alternative-details"
-                      value={formData.alternativeDetails}
-                      onChange={(e) => setFormData(prev => ({ ...prev, alternativeDetails: e.target.value }))}
-                      placeholder="Any additional payment information..."
-                      rows={3}
-                    />
-                  </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="social-contact">
+                          {formData.socialType === 'whatsapp' ? 'WhatsApp Number' : 'Telegram ID'} *
+                        </Label>
+                        <Input
+                          id="social-contact"
+                          value={formData.socialContact}
+                          onChange={(e) => setFormData(prev => ({ ...prev, socialContact: e.target.value }))}
+                          placeholder={
+                            formData.socialType === 'whatsapp' ? '+1234567890' : '@username'
+                          }
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <Button 
                     type="submit" 
-                    disabled={submitting} 
+                    disabled={submitting || !paymentType} 
                     className="w-full btn-neon"
                   >
                     {submitting ? (
@@ -349,14 +385,14 @@ const RequestPayment = () => {
                     ) : (
                       <>
                         <CreditCard className="h-4 w-4 mr-2" />
-                        Submit Payment Request
+                        Submit Request
                       </>
                     )}
                   </Button>
 
                   <p className="text-xs text-muted-foreground text-center">
-                    Your payment request will be reviewed within 24 hours. 
-                    You'll receive access to the product once verified.
+                    Your request will be reviewed within 24 hours. 
+                    You'll receive access once verified.
                   </p>
                 </form>
               </CardContent>
