@@ -104,51 +104,59 @@ const Products = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <div className="h-48 bg-muted rounded-t-lg"></div>
-              <CardHeader>
-                <div className="h-4 bg-muted rounded w-3/4"></div>
-                <div className="h-3 bg-muted rounded w-1/2"></div>
-              </CardHeader>
-            </Card>
-          ))}
+      <div className="min-h-screen bg-gradient-to-br from-background/50 via-background to-background/50 py-8">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <div className="h-48 bg-muted rounded-t-lg"></div>
+                <CardHeader>
+                  <div className="h-4 bg-muted rounded w-3/4"></div>
+                  <div className="h-3 bg-muted rounded w-1/2"></div>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-4">Digital Products</h1>
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search products..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+    <div className="min-h-screen bg-gradient-to-br from-background/50 via-background to-background/50 py-8">
+      <div className="container mx-auto px-4">
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl font-bold mb-4 text-glow">Digital Products</h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-6">
+            Discover our collection of premium digital products and free resources
+          </p>
+          <div className="relative max-w-md mx-auto">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         </div>
       </div>
 
-      {filteredProducts.length === 0 ? (
-        <Card className="text-center py-12">
-          <CardContent>
-            <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No products found</h3>
-            <p className="text-muted-foreground">
-              {searchTerm ? 'Try adjusting your search terms' : 'No products are currently available'}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts.map((product) => (
-            <Card key={product.id} className="overflow-hidden">
+        <div className="container mx-auto px-4">
+          {filteredProducts.length === 0 ? (
+          <Card className="text-center py-12 card-neon max-w-md mx-auto">
+            <CardContent>
+              <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No products found</h3>
+              <p className="text-muted-foreground">
+                {searchTerm ? 'Try adjusting your search terms' : 'No products are currently available'}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredProducts.map((product) => (
+              <Card key={product.id} className="overflow-hidden card-neon hover-scale">
               {product.image_url && (
                 <div className="h-48 overflow-hidden">
                   <img
@@ -161,9 +169,15 @@ const Products = () => {
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <CardTitle className="text-lg">{product.title}</CardTitle>
-                  <Badge variant="secondary" className="ml-2">
-                    <DollarSign className="h-3 w-3 mr-1" />
-                    {product.price}
+                  <Badge variant={product.price === 0 ? "default" : "secondary"} className="ml-2">
+                    {product.price === 0 ? (
+                      <>FREE</>
+                    ) : (
+                      <>
+                        <DollarSign className="h-3 w-3 mr-1" />
+                        {product.price}
+                      </>
+                    )}
                   </Badge>
                 </div>
                 <CardDescription className="line-clamp-2">
@@ -195,9 +209,9 @@ const Products = () => {
                   ) : (
                     <Button 
                       onClick={() => window.location.href = `/request-payment/${product.id}`}
-                      className="w-full"
+                      className="w-full btn-neon"
                     >
-                      Request Access - ${product.price}
+                      {product.price === 0 ? 'Get Free Access' : `Request Access - $${product.price}`}
                     </Button>
                   )
                 ) : (
@@ -211,10 +225,11 @@ const Products = () => {
                 )}
               </CardContent>
             </Card>
-          ))}
+              ))}
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
   );
 };
 

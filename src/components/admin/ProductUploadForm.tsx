@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Upload, X, Plus } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 interface ProductUploadFormProps {
   onProductUploaded: () => void;
@@ -20,6 +21,7 @@ const ProductUploadForm = ({ onProductUploaded }: ProductUploadFormProps) => {
     price: '',
     category: '',
     tags: [] as string[],
+    isFree: false,
   });
   const [newTag, setNewTag] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -63,7 +65,7 @@ const ProductUploadForm = ({ onProductUploaded }: ProductUploadFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.price) {
+    if (!formData.title || (!formData.isFree && !formData.price)) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -93,7 +95,7 @@ const ProductUploadForm = ({ onProductUploaded }: ProductUploadFormProps) => {
         .insert({
           title: formData.title,
           description: formData.description,
-          price: parseFloat(formData.price),
+          price: formData.isFree ? 0 : parseFloat(formData.price),
           category: formData.category || null,
           tags: formData.tags.length > 0 ? formData.tags : null,
           image_url: imageUrl || null,
@@ -115,6 +117,7 @@ const ProductUploadForm = ({ onProductUploaded }: ProductUploadFormProps) => {
         price: '',
         category: '',
         tags: [],
+        isFree: false,
       });
       setNewTag('');
       setImageFile(null);
@@ -157,7 +160,23 @@ const ProductUploadForm = ({ onProductUploaded }: ProductUploadFormProps) => {
               />
             </div>
             <div>
-              <Label htmlFor="price">Price (USD) *</Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="price">Price (USD) {!formData.isFree && '*'}</Label>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="free-toggle"
+                    checked={formData.isFree}
+                    onCheckedChange={(checked) => {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        isFree: checked,
+                        price: checked ? '0' : prev.price
+                      }));
+                    }}
+                  />
+                  <Label htmlFor="free-toggle" className="text-sm">Free Product</Label>
+                </div>
+              </div>
               <Input
                 id="price"
                 type="number"
@@ -165,8 +184,14 @@ const ProductUploadForm = ({ onProductUploaded }: ProductUploadFormProps) => {
                 value={formData.price}
                 onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
                 placeholder="0.00"
-                required
+                disabled={formData.isFree}
+                required={!formData.isFree}
               />
+              {formData.isFree && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  This product will be available for free download
+                </p>
+              )}
             </div>
           </div>
 

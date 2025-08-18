@@ -41,6 +41,9 @@ const Navbar = () => {
           <Link to="/contact">
             <Button variant="ghost">Contact</Button>
           </Link>
+          <Link to="/faq">
+            <Button variant="ghost">FAQ</Button>
+          </Link>
           
           {user ? (
             <>

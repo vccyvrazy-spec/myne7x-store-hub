@@ -16,6 +16,8 @@ import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import FAQ from "./pages/FAQ";
+import RequestPayment from "./pages/RequestPayment";
 import NotFound from "./pages/NotFound";
 import Footer from "./components/Footer";
 
@@ -37,6 +39,15 @@ const App = () => (
             <Route path="/contact" element={<Contact />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/faq" element={<FAQ />} />
+            <Route 
+              path="/request-payment/:productId" 
+              element={
+                <ProtectedRoute>
+                  <RequestPayment />
+                </ProtectedRoute>
+              } 
+            />
             <Route 
               path="/profile" 
               element={
