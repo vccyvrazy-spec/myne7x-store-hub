@@ -112,45 +112,8 @@ const Products = () => {
   };
 
   const handleDownload = async (product: Product) => {
-    if (isAdmin) {
-      // Admin can download immediately without countdown
-      try {
-        if (product.file_url) {
-          const { data } = await supabase.storage
-            .from('product-files')
-            .createSignedUrl(product.file_url.split('/').pop() || '', 3600);
-          
-          if (data?.signedUrl) {
-            const link = document.createElement('a');
-            link.href = data.signedUrl;
-            link.download = product.title;
-            link.target = '_blank';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            toast({
-              title: "Download Started",
-              description: `${product.title} download has begun`,
-            });
-          } else {
-            throw new Error('Unable to create download link');
-          }
-        } else {
-          throw new Error('No file URL found');
-        }
-      } catch (error) {
-        toast({
-          title: "Download Failed",
-          description: "Unable to download the file",
-          variant: "destructive"
-        });
-      }
-      return;
-    }
-
     // For free products or users with access, show countdown
-    if (product.price === 0 || hasAccess(product.id)) {
+    if (product.price === 0 || hasAccess(product.id) || isAdmin) {
       setDownloadingProduct(product);
     } else {
       toast({
@@ -234,108 +197,111 @@ const Products = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background/50 via-background to-background/50 py-8">
-        <div className="container mx-auto px-4">
-          <div className="mb-8 text-center">
-            <h1 className="text-2xl md:text-4xl font-bold mb-4 text-glow">Digital Products</h1>
-            <p className="text-sm md:text-lg text-muted-foreground max-w-2xl mx-auto mb-6 px-4">
-              Discover our collection of premium digital products and free resources
-            </p>
-            <div className="relative max-w-md mx-auto px-4">
-              <Search className="absolute left-7 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search products..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/90 to-background py-4 md:py-8">
+      <div className="container mx-auto px-3 md:px-4">
+        <div className="mb-6 md:mb-8 text-center">
+          <h1 className="text-3xl md:text-5xl font-orbitron font-black mb-4 text-glow bg-gradient-animated bg-clip-text text-transparent">
+            Digital Products
+          </h1>
+          <p className="text-sm md:text-lg text-muted-foreground max-w-2xl mx-auto mb-6 px-2 md:px-4">
+            Discover our collection of premium digital products and free resources
+          </p>
+          <div className="relative max-w-md mx-auto px-2 md:px-4">
+            <Search className="absolute left-5 md:left-7 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-12 md:pl-10 h-12 card-neon border-border/30 focus:border-primary/50 text-foreground"
+            />
           </div>
+        </div>
 
-        <div className="container mx-auto px-4">
-          {filteredProducts.length === 0 ? (
-            <Card className="text-center py-12 card-neon max-w-md mx-auto">
-              <CardContent>
-                <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No products found</h3>
-                <p className="text-muted-foreground">
-                  {searchTerm ? 'Try adjusting your search terms' : 'No products are currently available'}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-              {filteredProducts.map((product) => (
-                <Card key={product.id} className="overflow-hidden card-neon hover-scale">
-                  {product.image_url && (
-                    <div 
-                      className="h-48 overflow-hidden cursor-pointer"
+        {filteredProducts.length === 0 ? (
+          <Card className="text-center py-12 card-neon max-w-md mx-auto">
+            <CardContent>
+              <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No products found</h3>
+              <p className="text-muted-foreground">
+                {searchTerm ? 'Try adjusting your search terms' : 'No products are currently available'}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
+            {filteredProducts.map((product) => (
+              <Card key={product.id} className="overflow-hidden card-neon hover-scale transition-all duration-300 hover:shadow-glow">
+                {product.image_url && (
+                  <div 
+                    className="h-40 md:h-48 overflow-hidden cursor-pointer"
+                    onClick={() => window.location.href = `/product/${product.id}`}
+                  >
+                    <img
+                      src={product.image_url}
+                      alt={product.title}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                )}
+                <CardHeader className="pb-3 p-3 md:p-6">
+                  <div className="flex justify-between items-start gap-2">
+                    <CardTitle 
+                      className="text-sm md:text-lg cursor-pointer hover:text-primary transition-colors line-clamp-1 font-orbitron"
                       onClick={() => window.location.href = `/product/${product.id}`}
                     >
-                      <img
-                        src={product.image_url}
-                        alt={product.title}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform"
-                      />
-                    </div>
-                  )}
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start gap-2">
-                      <CardTitle 
-                        className="text-base md:text-lg cursor-pointer hover:text-primary transition-colors line-clamp-1"
-                        onClick={() => window.location.href = `/product/${product.id}`}
-                      >
-                        {product.title}
-                      </CardTitle>
-                      <Badge variant={product.price === 0 ? "default" : "secondary"} className="shrink-0 text-xs">
-                        {product.price === 0 ? (
-                          <>FREE</>
-                        ) : (
-                          <>
-                            <DollarSign className="h-3 w-3 mr-1" />
-                            {product.price}
-                          </>
-                        )}
-                      </Badge>
-                    </div>
-                    <CardDescription className="line-clamp-2 text-xs md:text-sm">
-                      {product.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {product.category && (
-                        <Badge variant="outline" className="text-xs">{product.category}</Badge>
+                      {product.title}
+                    </CardTitle>
+                    <Badge 
+                      variant={product.price === 0 ? "default" : "secondary"} 
+                      className={`shrink-0 text-xs ${product.price === 0 ? 'bg-neon-green/20 text-neon-green border-neon-green/30' : 'bg-neon-purple/20 text-neon-purple border-neon-purple/30'}`}
+                    >
+                      {product.price === 0 ? (
+                        <>FREE</>
+                      ) : (
+                        <>
+                          <DollarSign className="h-3 w-3 mr-1" />
+                          {product.price}
+                        </>
                       )}
-                      {product.tags?.slice(0, 1).map((tag, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
+                    </Badge>
+                  </div>
+                  <CardDescription className="line-clamp-2 text-xs md:text-sm text-muted-foreground">
+                    {product.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0 p-3 md:p-6 md:pt-0">
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {product.category && (
+                      <Badge variant="outline" className="text-xs border-border/30 text-muted-foreground">{product.category}</Badge>
+                    )}
+                    {product.tags?.slice(0, 1).map((tag, index) => (
+                      <Badge key={index} variant="outline" className="text-xs border-border/30 text-muted-foreground">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                  
+                  {(() => {
+                    const buttonState = getButtonState(product);
+                    const Icon = buttonState.icon;
                     
-                    {(() => {
-                      const buttonState = getButtonState(product);
-                      const Icon = buttonState.icon;
-                      
-                      return (
-                        <Button 
-                          onClick={buttonState.action}
-                          className={`w-full text-xs md:text-sm h-8 md:h-10 ${buttonState.className || ''}`}
-                          variant={buttonState.variant}
-                          disabled={buttonState.disabled}
-                        >
-                          {Icon && <Icon className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />}
-                          {buttonState.text}
-                        </Button>
-                      );
-                    })()}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+                    return (
+                      <Button 
+                        onClick={buttonState.action}
+                        className={`w-full text-xs md:text-sm h-9 md:h-10 font-semibold transition-all duration-300 ${buttonState.className || ''}`}
+                        variant={buttonState.variant}
+                        disabled={buttonState.disabled}
+                      >
+                        {Icon && <Icon className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />}
+                        {buttonState.text}
+                      </Button>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Download Component */}
         {downloadingProduct && (
