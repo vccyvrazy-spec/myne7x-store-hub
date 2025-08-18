@@ -9,6 +9,7 @@ import Navbar from "@/components/Navbar";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Products from "./pages/Products";
+import ProductDetails from "./pages/ProductDetails";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import Admin from "./pages/Admin";
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/products" element={<Products />} />
+            <Route path="/product/:productId" element={<ProductDetails />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/terms" element={<Terms />} />

@@ -343,6 +343,7 @@ const RequestPayment = () => {
                             type="file"
                             accept="image/*"
                             onChange={(e) => setScreenshotFile(e.target.files?.[0] || null)}
+                            required={paymentType === 'nayapay' && !formData.transactionId}
                           />
                         </div>
                       </CardContent>
@@ -365,6 +366,16 @@ const RequestPayment = () => {
                             placeholder="Describe how you want to pay (e.g., Bank transfer, Cash, etc.)"
                             rows={3}
                             required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="custom-screenshot">Upload Supporting Screenshot/Document (Optional)</Label>
+                          <Input
+                            id="custom-screenshot"
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setScreenshotFile(e.target.files?.[0] || null)}
                           />
                         </div>
                       </CardContent>

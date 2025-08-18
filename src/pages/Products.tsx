@@ -17,6 +17,7 @@ interface Product {
   image_url: string;
   category: string;
   tags: string[];
+  feature_images: string[];
   is_active: boolean;
   file_url?: string;
 }
@@ -247,17 +248,25 @@ const Products = () => {
               {filteredProducts.map((product) => (
                 <Card key={product.id} className="overflow-hidden card-neon hover-scale">
                   {product.image_url && (
-                    <div className="h-48 overflow-hidden">
+                    <div 
+                      className="h-48 overflow-hidden cursor-pointer"
+                      onClick={() => window.location.href = `/product/${product.id}`}
+                    >
                       <img
                         src={product.image_url}
                         alt={product.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover hover:scale-105 transition-transform"
                       />
                     </div>
                   )}
                   <CardHeader>
                     <div className="flex justify-between items-start">
-                      <CardTitle className="text-lg">{product.title}</CardTitle>
+                      <CardTitle 
+                        className="text-lg cursor-pointer hover:text-primary transition-colors"
+                        onClick={() => window.location.href = `/product/${product.id}`}
+                      >
+                        {product.title}
+                      </CardTitle>
                       <Badge variant={product.price === 0 ? "default" : "secondary"} className="ml-2">
                         {product.price === 0 ? (
                           <>FREE</>

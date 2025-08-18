@@ -281,11 +281,28 @@ const PaymentRequestManagement = () => {
                               {selectedRequest.payment_screenshot_url && (
                                 <div>
                                   <strong>Payment Screenshot:</strong>
-                                  <img 
-                                    src={selectedRequest.payment_screenshot_url} 
-                                    alt="Payment Screenshot" 
-                                    className="mt-2 max-w-full h-auto border rounded"
-                                  />
+                                  <div className="mt-2">
+                                    <Dialog>
+                                      <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                          <Eye className="h-4 w-4 mr-2" />
+                                          View Screenshot
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="max-w-4xl">
+                                        <DialogHeader>
+                                          <DialogTitle>Payment Screenshot</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="flex justify-center">
+                                          <img 
+                                            src={selectedRequest.payment_screenshot_url} 
+                                            alt="Payment Screenshot" 
+                                            className="max-w-full max-h-[70vh] object-contain border rounded"
+                                          />
+                                        </div>
+                                      </DialogContent>
+                                    </Dialog>
+                                  </div>
                                 </div>
                               )}
 

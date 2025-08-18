@@ -26,6 +26,7 @@ const ProductUploadForm = ({ onProductUploaded }: ProductUploadFormProps) => {
   const [newTag, setNewTag] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [productFile, setProductFile] = useState<File | null>(null);
+  const [featureImages, setFeatureImages] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
 
   const addTag = () => {
@@ -89,6 +90,14 @@ const ProductUploadForm = ({ onProductUploaded }: ProductUploadFormProps) => {
         fileUrl = await uploadFile(productFile, 'product-files');
       }
 
+      // Upload feature images if provided
+      let featureImageUrls: string[] = [];
+      if (featureImages.length > 0) {
+        featureImageUrls = await Promise.all(
+          featureImages.map(file => uploadFile(file, 'product-images'))
+        );
+      }
+
       // Insert product into database
       const { error } = await supabase
         .from('products')
@@ -100,6 +109,7 @@ const ProductUploadForm = ({ onProductUploaded }: ProductUploadFormProps) => {
           tags: formData.tags.length > 0 ? formData.tags : null,
           image_url: imageUrl || null,
           file_url: fileUrl || null,
+          feature_images: featureImageUrls.length > 0 ? featureImageUrls : null,
           is_active: true
         });
 
@@ -122,6 +132,7 @@ const ProductUploadForm = ({ onProductUploaded }: ProductUploadFormProps) => {
       setNewTag('');
       setImageFile(null);
       setProductFile(null);
+      setFeatureImages([]);
       onProductUploaded();
 
     } catch (error: any) {
@@ -244,7 +255,7 @@ const ProductUploadForm = ({ onProductUploaded }: ProductUploadFormProps) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="image">Product Image</Label>
+              <Label htmlFor="image">Main Product Image</Label>
               <Input
                 id="image"
                 type="file"
@@ -260,6 +271,42 @@ const ProductUploadForm = ({ onProductUploaded }: ProductUploadFormProps) => {
                 onChange={(e) => setProductFile(e.target.files?.[0] || null)}
               />
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="feature-images">Feature Images (Max 6)</Label>
+            <Input
+              id="feature-images"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                if (files.length > 6) {
+                  toast({
+                    title: "Error",
+                    description: "Maximum 6 feature images allowed",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+                setFeatureImages(files);
+              }}
+            />
+            {featureImages.length > 0 && (
+              <div className="mt-2">
+                <p className="text-sm text-muted-foreground">
+                  {featureImages.length} image(s) selected
+                </p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {featureImages.map((file, index) => (
+                    <Badge key={index} variant="secondary" className="text-xs">
+                      {file.name}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <Button type="submit" disabled={uploading} className="w-full">
