@@ -61,7 +61,31 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				neon: {
+					blue: 'hsl(var(--neon-blue))',
+					purple: 'hsl(var(--neon-purple))',
+					cyan: 'hsl(var(--neon-cyan))',
+					pink: 'hsl(var(--neon-pink))',
+					green: 'hsl(var(--neon-green))',
+					orange: 'hsl(var(--neon-orange))'
 				}
+			},
+			fontFamily: {
+				'orbitron': ['Orbitron', 'monospace'],
+				'inter': ['Inter', 'sans-serif'],
+			},
+			boxShadow: {
+				'neon-blue': 'var(--shadow-neon-blue)',
+				'neon-purple': 'var(--shadow-neon-purple)',
+				'neon-cyan': 'var(--shadow-neon-cyan)',
+				'glow': 'var(--glow-intense)',
+			},
+			backgroundImage: {
+				'gradient-neon': 'var(--gradient-primary)',
+				'gradient-neon-secondary': 'var(--gradient-secondary)',
+				'gradient-neon-accent': 'var(--gradient-accent)',
+				'gradient-hero': 'var(--gradient-hero)',
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
