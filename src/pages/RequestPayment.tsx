@@ -87,9 +87,21 @@ const RequestPayment = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !product) return;
+    
+    console.log('Form submission started:', { user, product, paymentType, formData });
+    
+    if (!user || !product) {
+      console.error('Missing user or product:', { user: !!user, product: !!product });
+      toast({
+        title: "Error",
+        description: "Please log in and try again",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    if (!paymentType || !formData.socialContact) {
+    if (!paymentType || !formData.socialContact.trim()) {
+      console.error('Missing required fields:', { paymentType, socialContact: formData.socialContact });
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -98,10 +110,21 @@ const RequestPayment = () => {
       return;
     }
 
-    if (paymentType === 'nayapay' && !formData.transactionId && !screenshotFile) {
+    if (paymentType === 'nayapay' && !formData.transactionId.trim() && !screenshotFile) {
+      console.error('Nayapay missing transaction details');
       toast({
         title: "Error",
         description: "Please provide either transaction ID or payment screenshot",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (paymentType === 'custom' && !formData.customMessage.trim()) {
+      console.error('Custom form missing message');
+      toast({
+        title: "Error",
+        description: "Please explain your payment method",
         variant: "destructive"
       });
       return;
@@ -112,24 +135,36 @@ const RequestPayment = () => {
       let screenshotUrl = '';
       
       if (screenshotFile) {
+        console.log('Uploading screenshot...');
         screenshotUrl = await uploadScreenshot(screenshotFile);
+        console.log('Screenshot uploaded:', screenshotUrl);
       }
 
-      const { error } = await supabase
-        .from('payment_requests')
-        .insert({
-          user_id: user.id,
-          product_id: product.id,
-          payment_method: paymentType,
-          contact_method: formData.socialType,
-          contact_value: formData.socialContact,
-          transaction_id: formData.transactionId || null,
-          payment_screenshot_url: screenshotUrl || null,
-          alternative_payment_details: formData.customMessage || null,
-          status: 'pending'
-        });
+      const insertData = {
+        user_id: user.id,
+        product_id: product.id,
+        payment_method: paymentType,
+        contact_method: formData.socialType,
+        contact_value: formData.socialContact.trim(),
+        transaction_id: formData.transactionId.trim() || null,
+        payment_screenshot_url: screenshotUrl || null,
+        alternative_payment_details: formData.customMessage.trim() || null,
+        status: 'pending'
+      };
 
-      if (error) throw error;
+      console.log('Inserting payment request:', insertData);
+
+      const { data, error } = await supabase
+        .from('payment_requests')
+        .insert(insertData)
+        .select();
+
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw error;
+      }
+
+      console.log('Payment request inserted successfully:', data);
 
       toast({
         title: "Payment Request Submitted",
@@ -138,6 +173,7 @@ const RequestPayment = () => {
 
       navigate('/products');
     } catch (error: any) {
+      console.error('Submit error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to submit payment request",
