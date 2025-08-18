@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -16,6 +18,49 @@ import { User, LogOut, Settings, Bell, ShoppingBag, Menu } from 'lucide-react';
 const Navbar = () => {
   const { user, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread notifications count
+  useEffect(() => {
+    if (user) {
+      fetchUnreadCount();
+      
+      // Set up real-time subscription for notifications
+      const channel = supabase
+        .channel('notifications-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => fetchUnreadCount()
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
+
+  const fetchUnreadCount = async () => {
+    if (!user) return;
+    
+    try {
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+      
+      setUnreadCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -84,12 +129,17 @@ const Navbar = () => {
                       Profile
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/notifications" className="cursor-pointer">
-                      <Bell className="mr-2 h-4 w-4" />
-                      Notifications
-                    </Link>
-                  </DropdownMenuItem>
+                   <DropdownMenuItem asChild>
+                     <Link to="/notifications" className="cursor-pointer">
+                       <Bell className="mr-2 h-4 w-4" />
+                       Notifications
+                       {unreadCount > 0 && (
+                         <Badge variant="destructive" className="ml-auto text-xs">
+                           {unreadCount}
+                         </Badge>
+                       )}
+                     </Link>
+                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
@@ -134,12 +184,17 @@ const Navbar = () => {
                     Profile
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/notifications" className="cursor-pointer">
-                    <Bell className="mr-2 h-4 w-4" />
-                    Notifications
-                  </Link>
-                </DropdownMenuItem>
+                 <DropdownMenuItem asChild>
+                   <Link to="/notifications" className="cursor-pointer">
+                     <Bell className="mr-2 h-4 w-4" />
+                     Notifications
+                     {unreadCount > 0 && (
+                       <Badge variant="destructive" className="ml-auto text-xs">
+                         {unreadCount}
+                       </Badge>
+                     )}
+                   </Link>
+                 </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem asChild>
                     <Link to="/admin" className="cursor-pointer">
