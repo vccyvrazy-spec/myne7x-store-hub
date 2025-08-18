@@ -116,7 +116,6 @@ const Products = () => {
       // Admin can download immediately without countdown
       try {
         if (product.file_url) {
-          // Get direct download URL from Supabase storage
           const { data } = await supabase.storage
             .from('product-files')
             .createSignedUrl(product.file_url.split('/').pop() || '', 3600);
@@ -150,17 +149,16 @@ const Products = () => {
       return;
     }
 
-    if (!hasAccess(product.id)) {
+    // For free products or users with access, show countdown
+    if (product.price === 0 || hasAccess(product.id)) {
+      setDownloadingProduct(product);
+    } else {
       toast({
         title: "Access Denied",
         description: "You need to purchase this product first",
         variant: "destructive"
       });
-      return;
     }
-
-    // Start download component
-    setDownloadingProduct(product);
   };
 
   const getButtonState = (product: Product) => {
@@ -168,12 +166,25 @@ const Products = () => {
       return { text: 'Sign in to Purchase', variant: 'outline' as const, action: () => window.location.href = '/auth' };
     }
 
+    // For free products, show Download button directly
+    if (product.price === 0) {
+      return { 
+        text: 'Download', 
+        variant: 'default' as const, 
+        action: () => handleDownload(product),
+        icon: Download,
+        className: 'btn-neon'
+      };
+    }
+
+    // For paid products, check access
     if (hasAccess(product.id)) {
       return { 
         text: 'Download', 
         variant: 'default' as const, 
         action: () => handleDownload(product),
-        icon: Download
+        icon: Download,
+        className: 'btn-neon'
       };
     }
 
@@ -188,7 +199,7 @@ const Products = () => {
     }
 
     return { 
-      text: product.price === 0 ? 'Get Free Access' : `Request Access - $${product.price}`, 
+      text: `Buy - $${product.price}`, 
       variant: 'default' as const,
       action: () => window.location.href = `/request-payment/${product.id}`,
       className: 'btn-neon'
@@ -224,22 +235,22 @@ const Products = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background/50 via-background to-background/50 py-8">
-      <div className="container mx-auto px-4">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold mb-4 text-glow">Digital Products</h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-6">
-            Discover our collection of premium digital products and free resources
-          </p>
-          <div className="relative max-w-md mx-auto">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+        <div className="container mx-auto px-4">
+          <div className="mb-8 text-center">
+            <h1 className="text-2xl md:text-4xl font-bold mb-4 text-glow">Digital Products</h1>
+            <p className="text-sm md:text-lg text-muted-foreground max-w-2xl mx-auto mb-6 px-4">
+              Discover our collection of premium digital products and free resources
+            </p>
+            <div className="relative max-w-md mx-auto px-4">
+              <Search className="absolute left-7 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Search products..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
-        </div>
 
         <div className="container mx-auto px-4">
           {filteredProducts.length === 0 ? (
@@ -253,7 +264,7 @@ const Products = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {filteredProducts.map((product) => (
                 <Card key={product.id} className="overflow-hidden card-neon hover-scale">
                   {product.image_url && (
@@ -268,15 +279,15 @@ const Products = () => {
                       />
                     </div>
                   )}
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start gap-2">
                       <CardTitle 
-                        className="text-lg cursor-pointer hover:text-primary transition-colors"
+                        className="text-base md:text-lg cursor-pointer hover:text-primary transition-colors line-clamp-1"
                         onClick={() => window.location.href = `/product/${product.id}`}
                       >
                         {product.title}
                       </CardTitle>
-                      <Badge variant={product.price === 0 ? "default" : "secondary"} className="ml-2">
+                      <Badge variant={product.price === 0 ? "default" : "secondary"} className="shrink-0 text-xs">
                         {product.price === 0 ? (
                           <>FREE</>
                         ) : (
@@ -287,16 +298,16 @@ const Products = () => {
                         )}
                       </Badge>
                     </div>
-                    <CardDescription className="line-clamp-2">
+                    <CardDescription className="line-clamp-2 text-xs md:text-sm">
                       {product.description}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-1 mb-4">
+                  <CardContent className="pt-0">
+                    <div className="flex flex-wrap gap-1 mb-3">
                       {product.category && (
-                        <Badge variant="outline">{product.category}</Badge>
+                        <Badge variant="outline" className="text-xs">{product.category}</Badge>
                       )}
-                      {product.tags?.slice(0, 2).map((tag, index) => (
+                      {product.tags?.slice(0, 1).map((tag, index) => (
                         <Badge key={index} variant="outline" className="text-xs">
                           {tag}
                         </Badge>
@@ -310,11 +321,11 @@ const Products = () => {
                       return (
                         <Button 
                           onClick={buttonState.action}
-                          className={`w-full ${buttonState.className || ''}`}
+                          className={`w-full text-xs md:text-sm h-8 md:h-10 ${buttonState.className || ''}`}
                           variant={buttonState.variant}
                           disabled={buttonState.disabled}
                         >
-                          {Icon && <Icon className="h-4 w-4 mr-2" />}
+                          {Icon && <Icon className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />}
                           {buttonState.text}
                         </Button>
                       );

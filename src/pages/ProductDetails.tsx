@@ -126,18 +126,26 @@ const ProductDetails = () => {
       // Admin can download immediately without countdown
       try {
         if (product.file_url) {
-          const link = document.createElement('a');
-          link.href = product.file_url;
-          link.download = product.title;
-          link.target = '_blank';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          const { data } = await supabase.storage
+            .from('product-files')
+            .createSignedUrl(product.file_url.split('/').pop() || '', 3600);
           
-          toast({
-            title: "Download Started",
-            description: `${product.title} download has begun`,
-          });
+          if (data?.signedUrl) {
+            const link = document.createElement('a');
+            link.href = data.signedUrl;
+            link.download = product.title;
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            toast({
+              title: "Download Started",
+              description: `${product.title} download has begun`,
+            });
+          } else {
+            throw new Error('Unable to create download link');
+          }
         } else {
           throw new Error('No file URL found');
         }
@@ -151,17 +159,16 @@ const ProductDetails = () => {
       return;
     }
 
-    if (!hasAccess(product.id)) {
+    // For free products or users with access, show countdown
+    if (product.price === 0 || hasAccess(product.id)) {
+      setDownloadingProduct(product);
+    } else {
       toast({
         title: "Access Denied",
         description: "You need to purchase this product first",
         variant: "destructive"
       });
-      return;
     }
-
-    // Start countdown for regular users
-    setDownloadingProduct(product);
   };
 
   const getButtonState = (product: Product) => {
@@ -169,12 +176,25 @@ const ProductDetails = () => {
       return { text: 'Sign in to Purchase', variant: 'outline' as const, action: () => navigate('/auth') };
     }
 
+    // For free products, show Download button directly
+    if (product.price === 0) {
+      return { 
+        text: 'Download', 
+        variant: 'default' as const, 
+        action: () => handleDownload(product),
+        icon: Download,
+        className: 'btn-neon'
+      };
+    }
+
+    // For paid products, check access
     if (hasAccess(product.id)) {
       return { 
         text: 'Download', 
         variant: 'default' as const, 
         action: () => handleDownload(product),
-        icon: Download
+        icon: Download,
+        className: 'btn-neon'
       };
     }
 
@@ -189,7 +209,7 @@ const ProductDetails = () => {
     }
 
     return { 
-      text: product.price === 0 ? 'Get Free Access' : `Request Access - $${product.price}`, 
+      text: `Buy - $${product.price}`, 
       variant: 'default' as const,
       action: () => navigate(`/request-payment/${product.id}`),
       className: 'btn-neon'
@@ -334,40 +354,40 @@ const ProductDetails = () => {
                     {product.description}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Tags and Category */}
-                  <div className="flex flex-wrap gap-2">
-                    {product.category && (
-                      <Badge variant="outline" className="px-3 py-1">
-                        {product.category}
-                      </Badge>
-                    )}
-                    {product.tags?.map((tag, index) => (
-                      <Badge key={index} variant="outline" className="px-2 py-1 text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                  
-                  {/* Action Button */}
-                  {(() => {
-                    const buttonState = getButtonState(product);
-                    const Icon = buttonState.icon;
+                  <CardContent className="space-y-4">
+                    {/* Tags and Category */}
+                    <div className="flex flex-wrap gap-2">
+                      {product.category && (
+                        <Badge variant="outline" className="px-3 py-1">
+                          {product.category}
+                        </Badge>
+                      )}
+                      {product.tags?.map((tag, index) => (
+                        <Badge key={index} variant="outline" className="px-2 py-1 text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
                     
-                    return (
-                      <Button 
-                        onClick={buttonState.action}
-                        className={`w-full text-lg py-6 ${buttonState.className || ''}`}
-                        variant={buttonState.variant}
-                        disabled={buttonState.disabled}
-                        size="lg"
-                      >
-                        {Icon && <Icon className="h-5 w-5 mr-2" />}
-                        {buttonState.text}
-                      </Button>
-                    );
-                  })()}
-                </CardContent>
+                    {/* Action Button */}
+                    {(() => {
+                      const buttonState = getButtonState(product);
+                      const Icon = buttonState.icon;
+                      
+                      return (
+                        <Button 
+                          onClick={buttonState.action}
+                          className={`w-full text-base md:text-lg py-4 md:py-6 ${buttonState.className || ''}`}
+                          variant={buttonState.variant}
+                          disabled={buttonState.disabled}
+                          size="lg"
+                        >
+                          {Icon && <Icon className="h-4 w-4 md:h-5 md:w-5 mr-2" />}
+                          {buttonState.text}
+                        </Button>
+                      );
+                    })()}
+                  </CardContent>
               </Card>
             </div>
           </div>

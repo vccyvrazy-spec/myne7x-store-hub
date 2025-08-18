@@ -44,6 +44,13 @@ const RequestPayment = () => {
     fetchProduct();
   }, [user, productId, navigate]);
 
+  useEffect(() => {
+    // Redirect free products to downloads
+    if (product && product.price === 0) {
+      navigate(`/product/${product.id}`);
+    }
+  }, [product, navigate]);
+
   const fetchProduct = async () => {
     if (!productId) return;
     

@@ -18,24 +18,18 @@ interface DownloadComponentProps {
 
 const DownloadComponent = ({ product, onClose }: DownloadComponentProps) => {
   const isFree = product.price === 0;
-  const [countdown, setCountdown] = useState(isFree ? 0 : 10);
+  const [countdown, setCountdown] = useState(30); // Always 30 seconds for all products
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadComplete, setDownloadComplete] = useState(false);
 
   useEffect(() => {
-    if (isFree) {
-      // Start download immediately for free products
-      startDownload();
-      return;
-    }
-    
     if (countdown > 0 && !downloadComplete) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
     } else if (countdown === 0 && !downloadComplete) {
       startDownload();
     }
-  }, [countdown, downloadComplete, isFree]);
+  }, [countdown, downloadComplete]);
 
   const startDownload = async () => {
     setIsDownloading(true);
@@ -80,7 +74,7 @@ const DownloadComponent = ({ product, onClose }: DownloadComponentProps) => {
     }
   };
 
-  const progressValue = isFree ? 100 : ((10 - countdown) / 10) * 100;
+  const progressValue = ((30 - countdown) / 30) * 100;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -91,37 +85,33 @@ const DownloadComponent = ({ product, onClose }: DownloadComponentProps) => {
             Download {product.title}
           </CardTitle>
           <CardDescription>
-            {downloadComplete ? 'Download completed!' : isFree ? 'Starting your free download...' : 'Preparing your download...'}
+            {downloadComplete ? 'Download completed!' : 'Preparing your download...'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {!downloadComplete && (
             <>
-              {!isFree && (
-                <>
-                  <div className="text-center">
-                    <div className="text-6xl font-bold text-neon-cyan mb-2">
-                      {countdown}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {countdown > 0 ? 'seconds remaining' : 'Starting download...'}
-                    </p>
-                  </div>
+              <div className="text-center">
+                <div className="text-6xl font-bold text-neon-cyan mb-2">
+                  {countdown}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {countdown > 0 ? 'seconds remaining' : 'Starting download...'}
+                </p>
+              </div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Progress</span>
-                      <span>{Math.round(progressValue)}%</span>
-                    </div>
-                    <Progress value={progressValue} className="h-2" />
-                  </div>
-                </>
-              )}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Progress</span>
+                  <span>{Math.round(progressValue)}%</span>
+                </div>
+                <Progress value={progressValue} className="h-2" />
+              </div>
 
-              {(isDownloading || isFree) && (
+              {isDownloading && (
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                   <Clock className="h-4 w-4 animate-spin" />
-                  {isFree ? 'Starting your free download...' : 'Initiating download...'}
+                  Initiating download...
                 </div>
               )}
             </>
