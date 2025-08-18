@@ -59,9 +59,13 @@ const RequestPayment = () => {
         .from('products')
         .select('*')
         .eq('id', productId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) {
+        navigate('/products');
+        return;
+      }
       setProduct(data);
     } catch (error) {
       toast({
